@@ -29,7 +29,9 @@ def batchConverter(raw_batch: Sequence[Tuple[str, str]]):
 
 def load_hub_workaround(url):
     try:
-        data = torch.hub.load_state_dict_from_url(url, progress=False, map_location="cpu")
+        # data = torch.hub.load_state_dict_from_url(url, progress=False, map_location="cpu")
+        data = torch.load(url, map_location="cpu")
+
     except RuntimeError:
         # Pytorch version issue - see https://github.com/pytorch/pytorch/issues/43106
         fn = pathlib.Path(url).name

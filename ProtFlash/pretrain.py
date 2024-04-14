@@ -6,7 +6,7 @@ from .utils import load_hub_workaround
 
 MODEL_URL_BASE = "https://zenodo.org/record/7655858/files/protflash_large.pt"
 MODEL_URL_SMALL = "https://zenodo.org/record/7655858/files/flash_protein.pt"
-
+MODEL_URL_SMALL = "../pretrained-models/flash_protein.pt"
 
 def load_prot_flash_base():
     model_data = load_hub_workaround(MODEL_URL_BASE)
@@ -21,6 +21,7 @@ def load_prot_flash_base():
 
 def load_prot_flash_small():
     model_data = load_hub_workaround(MODEL_URL_SMALL)
+    # model_data = torch.hub.load_state_dict(MODEL_URL_SMALL)
     # model_data = torch.load("/mnt/d/protein-net/ProtBert/flash_protein.pt", map_location="cpu")
     hyper_parameter = model_data["hyper_parameters"]
     model = FLASHTransformer(hyper_parameter['dim'], hyper_parameter['num_tokens'], hyper_parameter['num_layers'], group_size=hyper_parameter['num_tokens'],
