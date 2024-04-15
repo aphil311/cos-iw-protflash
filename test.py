@@ -5,10 +5,10 @@ import torch
 import torch.nn as nn
 import pandas as pd
 
-import tensorflow as tf
-import tensorflow_datasets as tfds
+# import tensorflow as tf
+# import tensorflow_datasets as tfds
 
-from ProtFlash.model import FLASHTransformer
+# from ProtFlash.model import FLASHTransformer
 
 ss_dict = {'H':0, 'B':1, 'E':2, 'G':3, 'I':4, 'T':5, 'S':6, 'C':7}
 
@@ -19,7 +19,8 @@ ss_dict = {'H':0, 'B':1, 'E':2, 'G':3, 'I':4, 'T':5, 'S':6, 'C':7}
 # read in proteins
 examples = 8
 training_steps = 10
-df = pd.read_csv('/Users/aidan/Documents/COS 398/archive/PDB_31-07-2011.csv', nrows=8)
+# df = pd.read_csv('/Users/aidan/Documents/COS 398/archive/PDB_31-07-2011.csv', nrows=8)
+df = pd.read_csv('/scratch/network/ap9884/PDB_31-07-2011.csv', nrows=8)
 
 plm_model = load_prot_flash_small()
 model = Convolution_Predictor(512)

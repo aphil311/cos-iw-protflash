@@ -6,7 +6,8 @@ from .utils import load_hub_workaround
 
 MODEL_URL_BASE = "https://zenodo.org/record/7655858/files/protflash_large.pt"
 MODEL_URL_SMALL = "https://zenodo.org/record/7655858/files/flash_protein.pt"
-MODEL_URL_SMALL = "../pretrained-models/flash_protein.pt"
+# MODEL_URL_SMALL = "../pretrained-models/flash_protein.pt"
+MODEL_URL_SMALL = '/scratch/network/ap9884/flash_protein.pt'
 
 def load_prot_flash_base():
     model_data = load_hub_workaround(MODEL_URL_BASE)
