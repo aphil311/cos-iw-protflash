@@ -2,6 +2,7 @@ from ProtFlash_Man.pretrain import load_prot_flash_small
 from ProtFlash_Man.utils import batchConverter
 from PredictionHead.model import Convolution_Predictor
 import torch
+import torch.nn as nn
 import pandas as pd
 
 import tensorflow as tf
@@ -14,18 +15,21 @@ ss_dict = {'H':0, 'B':1, 'E':2, 'G':3, 'I':4, 'T':5, 'S':6, 'C':7}
 # MODEL_URL_SMALL = "/scratch/network/ap9884/flash_protein.pt"
 # MODEL_URL_SMALL = "./pretrained-models/flash_protein.pt"
 
-print('building dataframe...')
+# print('building dataframe...')
 # read in proteins
-examples = 2
-training_steps = 1
-df = pd.read_csv('/Users/aidan/Documents/COS 398/archive/PDB_31-07-2011.csv', nrows=2)
+examples = 8
+training_steps = 10
+df = pd.read_csv('/Users/aidan/Documents/COS 398/archive/PDB_31-07-2011.csv', nrows=8)
+
+plm_model = load_prot_flash_small()
+model = Convolution_Predictor(512)
+criterion = nn.CrossEntropyLoss()
+optimizer = torch.optim.AdamW(model.parameters())
 
 # training loop
+print('starting training loop...')
 for s in range(training_steps):
     # print what iteration we are
-    if s % 10 == 0:
-        print('Iteration:', s)
-    
     batch = df.sample(examples)
 
     data = []       # training data
@@ -51,29 +55,27 @@ for s in range(training_steps):
         data.append((pdf_id, seq))
         i += 1
 
-    print('getting embeddings...')
+    # print('getting embeddings...')
     ids, batch_token, lengths = batchConverter(data)
-    model = load_prot_flash_small()
     with torch.no_grad():
-        token_embedding = model(batch_token, lengths)
+        token_embedding = plm_model(batch_token, lengths)
 
     # go from (N, L, d) to (N, d, L)
     token_embedding = torch.transpose(token_embedding, 1, 2)
 
     # Build the mask vector
-    print('getting secondary structures...')
-    ss_model = Convolution_Predictor(512, masks)
-    output = torch.transpose(ss_model(token_embedding), 1, 2)
-    trimmed_output = []
-    pretty_output = []
-    i=0
-    for o in output:
-        trimmed_output.append(o[:lengths[i], :])
-        pretty_output.append(torch.argmax(o[:lengths[i], :], dim=1))
-        i += 1
+    # print('getting secondary structures...')
+    output = model(token_embedding, masks)
+    # trimmed_output = []
+    # pretty_output = []
+    # i=0
+    # for o in output:
+    #     trimmed_output.append(o[:lengths[i], :])
+    #     pretty_output.append(torch.argmax(o[:lengths[i], :], dim=1))
+    #     i += 1
 
     # get a matrix (N, L, 8) that is one-hot
-    targets = torch.full((examples, max_len, 8), 0, dtype=int)
+    targets = torch.full((examples, 8, max_len), 0, dtype=float)
     i=0
     for protein in labels:
         j=0
@@ -81,20 +83,28 @@ for s in range(training_steps):
             index = ss_dict.get(aa)
             if index is None:
                 print('Error:', aa, 'not found')
-            targets[i, j, index] = 1
+            targets[i, index, j] = 1
             j+=1
         i+=1
-    
-    print(targets)
 
-    # output_labels = torch.argmax(output, dim=2)
-    idx_to_label = {v:k for k, v in ss_dict.items()}
+    loss = criterion(output, targets)
+    # if(s % 10 == 0):
+    #     print('epoch: ', s+1,' loss: ', loss.item())
+    print('epoch: ', s+1,' loss: ', loss.item())
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
 
-    i=0
-    for l in pretty_output:
-        # print('\n---------------------')
-        final = [idx_to_label[i] for i in l.cpu().numpy()]
-        string = ""
-        i += 1
-        # print(string.join(final))
-        # print(labels[i][1])
+    # # output_labels = torch.argmax(output, dim=2)
+    # idx_to_label = {v:k for k, v in ss_dict.items()}
+
+    # i=0
+    # for l in pretty_output:
+    #     # print('\n---------------------')
+    #     final = [idx_to_label[i] for i in l.cpu().numpy()]
+    #     string = ""
+    #     i += 1
+    #     # print(string.join(final))
+    #     # print(labels[i][1])
+    # if s == 10 or s == 9:
+    #     print('epoch: ', s+1,' loss: ', loss.item())

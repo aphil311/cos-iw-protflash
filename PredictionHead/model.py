@@ -48,9 +48,8 @@ class BasicConv1d_LN(nn.Module):
         return out  
 
 class Convolution_Predictor(nn.Module):
-    def __init__(self, num_channels, masks):
+    def __init__(self, num_channels):
         super(Convolution_Predictor, self).__init__()
-        self.masks = masks
         self.l1conv1d = BasicConv1d_LN(num_channels, num_channels, 1)
         self.l2conv1d = BasicConv1d_LN(num_channels//2, num_channels//2, 3)
         self.fc = nn.Linear(num_channels, 3)
@@ -69,22 +68,20 @@ class Convolution_Predictor(nn.Module):
     def channel_merge(self, t1, t2):
         return torch.cat((t1, t2), dim=1)
     
-    def forward(self, x):
-        out = self.l1conv1d(x, self.masks)
+    def forward(self, x, masks):
+        out = self.l1conv1d(x, masks)
 
         out1, out2 = self.channel_split(out)
         out1 = self.dropout(out1)
-        out1 = self.l2conv1d(out1, self.masks)
+        out1 = self.l2conv1d(out1, masks)
 
         out = self.channel_merge(out1, out2)
         out = self.dropout(out)
 
-        out = self.output(out, self.masks)
-
-        out = self.softmax(out)
-        final_mask = self.masks[:, :8, :]
+        out = self.output(out, masks)
+        final_mask = masks[:, :8, :]
         out = torch.where(final_mask,out,torch.zeros(size=(1,),device=out.device))
-
+        
         return out
     
     
