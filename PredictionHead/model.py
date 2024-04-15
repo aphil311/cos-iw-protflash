@@ -37,7 +37,7 @@ class BasicConv1d_LN(nn.Module):
 
     def forward(self,x,masks):
         out = x
-        if self.kernel_size >1:        
+        if self.kernel_size > 1:        
            out = torch.where(masks,out,torch.zeros(size=(1,),device=out.device))
         out = self.conv(out)
         out = F.hardswish(out)
@@ -82,6 +82,8 @@ class Convolution_Predictor(nn.Module):
         out = self.output(out, self.masks)
 
         out = self.softmax(out)
+        final_mask = self.masks[:, :8, :]
+        out = torch.where(final_mask,out,torch.zeros(size=(1,),device=out.device))
 
         return out
     
