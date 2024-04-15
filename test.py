@@ -1,5 +1,5 @@
-from ProtFlash.pretrain import load_prot_flash_small
-from ProtFlash.utils import batchConverter
+from ProtFlash_Man.pretrain import load_prot_flash_small
+from ProtFlash_Man.utils import batchConverter
 from PredictionHead.model import Convolution_Predictor
 import torch
 import pandas as pd
