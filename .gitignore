@@ -9,6 +9,10 @@ __pycache__/
 # Model parameters
 pretrained-models/
 
+# slurm jobs
+job.slurm
+slurm-*
+
 # C extensions
 *.so
 
