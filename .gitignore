@@ -8,6 +8,7 @@ __pycache__/
 
 # Model parameters
 pretrained-models/
+model.pt
 
 # slurm jobs
 job.slurm
