@@ -35,9 +35,24 @@ class BasicConv1d_LN(nn.Module):
         self.ln = T5LayerNorm_(out_channels)
         self.kernel_size = kernel_size
 
+    def adjust_mask(self, x, masks):
+        # Trim or pad masks to match the third dimension of x
+        if masks.shape[2] < x.shape[2]:
+            print('extended mask')
+            padding = masks[:, :, :x.shape[2]].new_zeros(
+                masks.shape[:2] + (masks.shape[2] - x.shape[2],),
+                dtype=torch.bool,
+            )
+            masks = torch.cat((masks, padding), dim=2)
+        elif masks.shape[2] > x.shape[2]:
+            print('trimmed mask')
+            masks = masks[:, :, :x.shape[2]]
+        return masks
+
     def forward(self,x,masks):
         out = x
-        if self.kernel_size > 1:        
+        if self.kernel_size > 1:
+           masks = self.adjust_mask(x, masks)
            out = torch.where(masks,out,torch.zeros(size=(1,),device=out.device))
         out = self.conv(out)
         out = F.hardswish(out)
@@ -67,8 +82,23 @@ class Convolution_Predictor(nn.Module):
     
     def channel_merge(self, t1, t2):
         return torch.cat((t1, t2), dim=1)
+
+    def adjust_mask(self, x, masks):
+        # Trim or pad masks to match the third dimension of x
+        if masks.shape[2] < x.shape[2]:
+            print('extended mask')
+            padding = masks[:, :, :x.shape[2]].new_zeros(
+                masks.shape[:2] + (masks.shape[2] - x.shape[2],),
+                dtype=torch.bool,
+            )
+            masks = torch.cat((masks, padding), dim=2)
+        elif masks.shape[2] > x.shape[2]:
+            print('trimmed mask')
+            masks = masks[:, :, :x.shape[2]]
+        return masks
     
     def forward(self, x, masks):
+        masks = self.adjust_mask(x, masks)
         out = self.l1conv1d(x, masks)
 
         out1, out2 = self.channel_split(out)

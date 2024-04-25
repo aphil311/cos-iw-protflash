@@ -14,8 +14,10 @@ ss_dict = {'H':0, 'B':1, 'E':2, 'G':3, 'I':4, 'T':5, 'S':6, 'C':7}
 
 # MODEL_URL_SMALL = "/scratch/network/ap9884/flash_protein.pt"
 # MODEL_URL_SMALL = "./pretrained-models/flash_protein.pt"
-examples = 128
-training_steps = 256
+examples = 256
+training_steps = 4000
+# examples = 1
+# training_steps = 1
 
 # set device to be gpu
 device = torch.device("cuda")
@@ -23,7 +25,7 @@ device = torch.device("cuda")
 # print('building dataframe...')
 # read in proteins
 # df = pd.read_csv('/Users/aidan/Documents/COS 398/archive/PDB_31-07-2011.csv', nrows=8)
-df = pd.read_csv('/scratch/network/ap9884/PDB_31-07-2011.csv', nrows=1024)
+df = pd.read_csv('/scratch/network/ap9884/PDB_31-07-2011.csv', nrows=12000)
 
 plm_model = load_prot_flash_small().to(device)
 model = Convolution_Predictor(512).to(device)
@@ -95,14 +97,22 @@ for s in range(training_steps):
             j+=1
         i+=1
 
-    loss = criterion(output, targets)
-    # if(s % 10 == 0):
-    #     print('epoch: ', s+1,' loss: ', loss.item())
-    print('epoch: ', s+1,' loss: ', loss.item())
-    optimizer.zero_grad()
-    loss.backward()
-    optimizer.step()
-
+    if output.shape[2] == targets.shape[2]:
+        loss = criterion(output, targets)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        if(s % 100 == 0):
+            print('epoch: ', s+1,' loss: ', loss.item())
+            torch.save({
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                }, '/scratch/network/ap9884/model.pt')
+    else:
+        print('did not match')
+    
+    # print('epoch: ', s+1,' loss: ', loss.item())
+    
     # # output_labels = torch.argmax(output, dim=2)
     # idx_to_label = {v:k for k, v in ss_dict.items()}
 
