@@ -65,9 +65,18 @@ class BasicConv1d_LN(nn.Module):
 class Convolution_Predictor(nn.Module):
     def __init__(self, num_channels):
         super(Convolution_Predictor, self).__init__()
-        self.l1conv1d = BasicConv1d_LN(num_channels, num_channels, 1)
-        self.l2conv1d = BasicConv1d_LN(num_channels//2, num_channels//2, 3)
-        self.fc = nn.Linear(num_channels, 3)
+        self.l1conv1d1 = BasicConv1d_LN(num_channels, num_channels, 1)
+        self.l2conv1d1 = BasicConv1d_LN(num_channels//2, num_channels//2, 3)
+
+        self.l1conv1d2 = BasicConv1d_LN(num_channels, num_channels, 1)
+        self.l2conv1d2 = BasicConv1d_LN(num_channels//2, num_channels//2, 3)
+
+        self.l3conv1d = BasicConv1d_LN(num_channels, 96, 3)
+        self.relu = nn.ReLU()
+
+        self.fc1 = nn.Linear(96, 32)
+        self.fc2 = nn.Linear(32, 8)
+
         self.dropout = nn.Dropout(0.2)
         self.softmax = nn.Softmax(1)
 
@@ -86,29 +95,61 @@ class Convolution_Predictor(nn.Module):
     def adjust_mask(self, x, masks):
         # Trim or pad masks to match the third dimension of x
         if masks.shape[2] < x.shape[2]:
-            print('extended mask')
+            # print('extended mask')
             padding = masks[:, :, :x.shape[2]].new_zeros(
                 masks.shape[:2] + (masks.shape[2] - x.shape[2],),
                 dtype=torch.bool,
             )
             masks = torch.cat((masks, padding), dim=2)
         elif masks.shape[2] > x.shape[2]:
-            print('trimmed mask')
+            # print('trimmed mask')
             masks = masks[:, :, :x.shape[2]]
         return masks
     
     def forward(self, x, masks):
         masks = self.adjust_mask(x, masks)
-        out = self.l1conv1d(x, masks)
+
+        # layer 1 ------------------------------------------------------
+        out = self.l1conv1d1(x, masks)
 
         out1, out2 = self.channel_split(out)
         out1 = self.dropout(out1)
-        out1 = self.l2conv1d(out1, masks)
+        out1 = self.l2conv1d1(out1, masks)
 
         out = self.channel_merge(out1, out2)
         out = self.dropout(out)
 
-        out = self.output(out, masks)
+        # layer 2 ------------------------------------------------------
+        out = self.l1conv1d2(out, masks)
+
+        out1, out2 = self.channel_split(out)
+        out1 = self.dropout(out1)
+        out1 = self.l2conv1d2(out1, masks)
+
+        out = self.channel_merge(out1, out2)
+        out = self.dropout(out)
+
+        # layer 3 ------------------------------------------------------
+        masks = self.channel_merge(masks, masks)
+        out = self.l3conv1d(out, masks)
+        out = self.relu(out)
+
+        # reshape ------------------------------------------------------
+        out = torch.transpose(out, 1, 2) # N x L x 96
+
+        # fully connected ----------------------------------------------
+        N, L, _ = out.shape
+        out = out.reshape(-1, 96) # Reshape x to (-1, 96) to apply the linear layer, merging N and L
+        out = self.fc1(out)
+
+        # output layer -------------------------------------------------
+        # we replace the final normalization layer with a relu and a fc from 32 to c (8)
+        out = self.relu(out)
+        out = self.fc2(out)
+        out = out.reshape(N, L, 8) # Reshape x back to (N, L, 8)
+
+        #  make pretty for output --------------------------------------
+        out = torch.transpose(out, 1, 2)
         final_mask = masks[:, :8, :]
         out = torch.where(final_mask,out,torch.zeros(size=(1,),device=out.device))
         

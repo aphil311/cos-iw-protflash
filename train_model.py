@@ -15,7 +15,7 @@ ss_dict = {'H':0, 'B':1, 'E':2, 'G':3, 'I':4, 'T':5, 'S':6, 'C':7}
 # MODEL_URL_SMALL = "/scratch/network/ap9884/flash_protein.pt"
 # MODEL_URL_SMALL = "./pretrained-models/flash_protein.pt"
 examples = 256
-training_steps = 4000
+training_steps = 5000
 # examples = 1
 # training_steps = 1
 
@@ -25,19 +25,21 @@ device = torch.device("cuda")
 # print('building dataframe...')
 # read in proteins
 # df = pd.read_csv('/Users/aidan/Documents/COS 398/archive/PDB_31-07-2011.csv', nrows=8)
-df = pd.read_csv('/scratch/network/ap9884/PDB_31-07-2011.csv', nrows=12000)
+df = pd.read_csv('/scratch/network/ap9884/PDB_31-07-2011.csv', nrows=1500)
 
 plm_model = load_prot_flash_small().to(device)
 model = Convolution_Predictor(512).to(device)
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.AdamW(model.parameters())
 
-# checkpoint = torch.load('/scratch/network/ap9884/model.pt')
-# model.load_state_dict(checkpoint['model_state_dict'])
-# optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+checkpoint = torch.load('/scratch/network/ap9884/model.pt')
+model.load_state_dict(checkpoint['model_state_dict'])
+optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
 # training loop
 print('starting training loop...')
+total_loss = 0
+loss_count = 0
 for s in range(training_steps):
     # print what iteration we are
     batch = df.sample(examples)
@@ -99,15 +101,17 @@ for s in range(training_steps):
 
     if output.shape[2] == targets.shape[2]:
         loss = criterion(output, targets)
+        total_loss += loss.item()
+        loss_count += 1
+
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        if(s % 100 == 0):
-            print('epoch: ', s+1,' loss: ', loss.item())
-            torch.save({
-                'model_state_dict': model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-                }, '/scratch/network/ap9884/model.pt')
+        if((s+1) % 100 == 0):
+            print('epoch: ', s+1,' average loss: ', total_loss / loss_count)
+            
+            total_loss = 0
+            loss_count = 0
     else:
         print('did not match')
     
@@ -126,6 +130,11 @@ for s in range(training_steps):
     #     # print(labels[i][1])
     # if s == 10 or s == 9:
     #     print('epoch: ', s+1,' loss: ', loss.item())
+
+torch.save({
+    'model_state_dict': model.state_dict(),
+    'optimizer_state_dict': optimizer.state_dict(),
+    }, '/scratch/network/ap9884/model2.pt')
 
 df = pd.read_csv('/scratch/network/ap9884/PDB_31-07-2011.csv', nrows=1)
 

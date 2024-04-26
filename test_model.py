@@ -6,23 +6,24 @@ import torch.nn as nn
 import pandas as pd
 
 ss_dict = {'H':0, 'B':1, 'E':2, 'G':3, 'I':4, 'T':5, 'S':6, 'C':7}
-examples = 1
+examples = 128
 
 # can modify this as convenient
-device = torch.device("cpu")
+device = torch.device("cuda")
 
-df = pd.read_csv('/Users/aidan/Documents/COS 398/archive/PDB_31-07-2011.csv', nrows=8)
+# df = pd.read_csv('/Users/aidan/Documents/COS 398/archive/PDB_31-07-2011.csv', skiprows=1200, nrows=100)
+df = pd.read_csv('/scratch/network/ap9884/PDB_31-07-2011.csv', nrows=1456)
 
 plm_model = load_prot_flash_small().to(device)
 
 model = Convolution_Predictor(512).to(device)
-checkpoint = torch.load('/Users/aidan/Documents/COS 398/cos-iw-protflash/model.pt')
+checkpoint = torch.load('/home/ap9884/cos-iw-protflash/model.pt')
 model.load_state_dict(checkpoint['model_state_dict'])
 
 criterion = nn.CrossEntropyLoss()
 
 # test on a few in distribution
-batch = df.sample(examples)
+batch = df.tail(examples)
 
 data = []       # training data
 labels = []     # training labels
@@ -71,7 +72,7 @@ for protein in labels:
 
 if output.shape[2] == targets.shape[2]:
     loss = criterion(output, targets)
-    print(loss)
+    print(loss.item())
 else:
     print('did not match')
 

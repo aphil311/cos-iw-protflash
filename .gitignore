@@ -11,7 +11,7 @@ pretrained-models/
 model.pt
 
 # slurm jobs
-job.slurm
+*.slurm
 slurm-*
 
 # C extensions
